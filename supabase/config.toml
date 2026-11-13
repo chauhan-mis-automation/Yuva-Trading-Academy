@@ -1,0 +1,10 @@
+# Minimal Supabase CLI config — lets `supabase functions deploy` work without
+# extra flags. Both functions verify the caller themselves (valid session +
+# Admin role), so the gateway-level JWT check is switched off.
+project_id = "lead-crm"
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.reset-password]
+verify_jwt = false
