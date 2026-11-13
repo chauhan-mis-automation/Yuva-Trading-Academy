@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import { supabase } from '../supabaseClient'
-import { STATUS_OPTIONS, SOURCE_OPTIONS, statusMeta, sourceLabel, PRIORITY_OPTIONS, priorityMeta } from '../lib/constants'
+import { STATUS_OPTIONS, SOURCE_OPTIONS, statusMeta, sourceLabel, LEAD_TEMPERATURE_OPTIONS, temperatureMeta } from '../lib/constants'
 import LeadFormModal from '../components/LeadFormModal'
 import EditLeadModal from '../components/EditLeadModal'
 import './LeadsList.css'
@@ -48,7 +48,7 @@ export default function LeadsList() {
     }
     if (statusFilter) query = query.eq('status', statusFilter)
     if (sourceFilter) query = query.eq('source', sourceFilter)
-    if (priorityFilter) query = query.eq('priority', priorityFilter)
+    if (priorityFilter) query = query.eq('lead_temperature', priorityFilter)
 
     const { data, error: fetchError } = await query
 
@@ -151,7 +151,7 @@ export default function LeadsList() {
       <div className="leads-filters">
         <input
           className="text-input search-input"
-          placeholder="Search by name, mobile, or company…"
+          placeholder="Search by name, mobile or course…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -169,8 +169,8 @@ export default function LeadsList() {
         </select>
         <select className="text-input" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
           <option value="">All Priorities</option>
-          {PRIORITY_OPTIONS.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
+          {LEAD_TEMPERATURE_OPTIONS.map((p) => (
+            <option key={p.value} value={p.value}>{p.icon} {p.label}</option>
           ))}
         </select>
       </div>
@@ -189,12 +189,12 @@ export default function LeadsList() {
           <table className="leads-table">
             <thead>
               <tr>
-                <th>Customer</th>
+                <th>Student</th>
                 <th>Contact</th>
                 <th>Source</th>
                 <th>Priority</th>
                 <th>Status</th>
-                <th>Assigned To</th>
+                <th>Counsellor</th>
                 <th>Next Follow-up</th>
                 <th></th>
               </tr>
@@ -204,9 +204,9 @@ export default function LeadsList() {
                 const meta = statusMeta(lead.status)
                 return (
                   <tr key={lead.id} className="clickable-row" onClick={() => navigate(`/leads/${lead.id}`)}>
-                    <td data-label="Customer">
+                    <td data-label="Student">
                       <div className="lead-name-cell">{lead.lead_name}</div>
-                      {lead.company && <div className="lead-company-cell">{lead.company}</div>}
+                      {lead.company && lead.company !== lead.lead_name && <div className="lead-company-cell">{lead.company}</div>}
                     </td>
                     <td data-label="Contact">
                       <div>
@@ -220,16 +220,18 @@ export default function LeadsList() {
                     </td>
                     <td data-label="Source">{sourceLabel(lead.source)}</td>
                     <td data-label="Priority">
-                      <span className="priority-badge" style={{ '--badge-color': priorityMeta(lead.priority).color }}>
-                        {priorityMeta(lead.priority).label}
-                      </span>
+                      {temperatureMeta(lead.lead_temperature) ? (
+                        <span className="priority-badge" style={{ '--badge-color': temperatureMeta(lead.lead_temperature).color }}>
+                          {temperatureMeta(lead.lead_temperature).icon} {temperatureMeta(lead.lead_temperature).label}
+                        </span>
+                      ) : '—'}
                     </td>
                     <td data-label="Status">
                       <span className="status-badge" style={{ '--badge-color': meta.color }}>
                         {meta.label}
                       </span>
                     </td>
-                    <td data-label="Assigned To">{lead.assigned_profile?.full_name || '—'}</td>
+                    <td data-label="Counsellor">{lead.assigned_profile?.full_name || '—'}</td>
                     <td data-label="Next Follow-up">
                       {lead.next_followup_date
                         ? new Date(lead.next_followup_date).toLocaleString('en-IN', {

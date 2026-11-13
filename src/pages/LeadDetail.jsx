@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import { supabase } from '../supabaseClient'
-import { STATUS_OPTIONS, sourceLabel, statusMeta, ACTION_TYPE_OPTIONS, actionTypeMeta, quotationStatusMeta, priorityMeta, temperatureMeta, closingTatLabel } from '../lib/constants'
+import { STATUS_OPTIONS, sourceLabel, statusMeta, ACTION_TYPE_OPTIONS, actionTypeMeta, quotationStatusMeta, temperatureMeta } from '../lib/constants'
 import QuotationFormModal from '../components/QuotationFormModal'
 import QuotationDetailModal from '../components/QuotationDetailModal'
 import Swal from 'sweetalert2'
@@ -34,6 +34,7 @@ export default function LeadDetail() {
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [followRemark, setFollowRemark] = useState('')
   const [followDate, setFollowDate] = useState('')
+  const [nextAction, setNextAction] = useState('')
   const [followStatus, setFollowStatus] = useState('')
   const [actionType, setActionType] = useState('call')
   const [actionLocation, setActionLocation] = useState('')
@@ -235,6 +236,7 @@ export default function LeadDetail() {
     }
 
     const leadUpdate = { next_action_type: actionType, next_action_location: actionLocation.trim() || null }
+    if (nextAction.trim()) leadUpdate.next_action = nextAction.trim()
     if (followDate) leadUpdate.next_followup_date = new Date(followDate).toISOString()
     if (followStatus) leadUpdate.status = followStatus
 
@@ -249,6 +251,7 @@ export default function LeadDetail() {
 
     setFollowRemark('')
     setFollowDate('')
+    setNextAction('')
     setFollowStatus('')
     setActionType('call')
     setActionLocation('')
@@ -333,7 +336,6 @@ export default function LeadDetail() {
         <div className="info-card">
           <h3>Lead Info</h3>
           <dl>
-            <dt>Client Name</dt><dd>{lead.client_name || '—'}</dd>
             <dt>Mobile No.</dt>
             <dd>
               {lead.mobile ? (
@@ -341,11 +343,11 @@ export default function LeadDetail() {
               ) : '—'}
             </dd>
             <dt>Email</dt><dd>{lead.email || '—'}</dd>
-            <dt>Type of Industry</dt><dd>{lead.industry_type || '—'}</dd>
+            <dt>Trading Experience</dt><dd>{lead.industry_type || '—'}</dd>
             <dt>City / State</dt><dd>{[lead.city, lead.state].filter(Boolean).join(', ') || '—'}</dd>
             <dt>Source</dt><dd>{sourceLabel(lead.source)}</dd>
-            <dt>Product</dt><dd>{lead.product?.product_name || '—'}</dd>
-            <dt>Lead Temperature</dt>
+            <dt>Interested Course</dt><dd>{lead.product?.product_name || '—'}</dd>
+            <dt>Priority</dt>
             <dd>
               {temperatureMeta(lead.lead_temperature) ? (
                 <span className="priority-badge" style={{ '--badge-color': temperatureMeta(lead.lead_temperature).color }}>
@@ -353,17 +355,9 @@ export default function LeadDetail() {
                 </span>
               ) : '—'}
             </dd>
-            <dt>Priority</dt>
-            <dd>
-              <span className="priority-badge" style={{ '--badge-color': priorityMeta(lead.priority).color }}>
-                {priorityMeta(lead.priority).label}
-              </span>
-            </dd>
-            <dt>Budget</dt><dd>{lead.budget ? `₹${Number(lead.budget).toLocaleString('en-IN')}` : '—'}</dd>
-            <dt>Expected Deal Value</dt><dd>{lead.expected_deal_value ? `₹${Number(lead.expected_deal_value).toLocaleString('en-IN')}` : '—'}</dd>
-            <dt>Closing TAT</dt><dd>{lead.closing_tat ? closingTatLabel(lead.closing_tat) : '—'}</dd>
-            <dt>Requirement</dt><dd>{lead.requirement || '—'}</dd>
+            <dt>Preferred Course / Notes</dt><dd>{lead.requirement || '—'}</dd>
             <dt>Created</dt><dd>{new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</dd>
+            <dt>Next Action</dt><dd>{lead.next_action || '—'}</dd>
             <dt>Next Follow-up</dt>
             <dd>
               {lead.next_followup_date ? (
@@ -381,7 +375,7 @@ export default function LeadDetail() {
         </div>
 
         <div className="info-card">
-          <h3>Status & Assignment</h3>
+          <h3>Status & Counsellor</h3>
           <div className="field">
             <label>Status</label>
             <select className="text-input" value={lead.status} onChange={(e) => handleStatusChange(e.target.value)} disabled={saving}>
@@ -392,7 +386,7 @@ export default function LeadDetail() {
           </div>
 
           <div className="field">
-            <label>Assigned To</label>
+            <label>Assigned Counsellor</label>
             {isManager ? (
               <select
                 className="text-input"
@@ -410,7 +404,7 @@ export default function LeadDetail() {
           </div>
 
           <div className="field">
-            <label>Next Follow-up Date</label>
+            <label>Next Follow-up Date &amp; Time</label>
             <div className="followup-edit-row">
               <input
                 type="datetime-local"
@@ -439,7 +433,7 @@ export default function LeadDetail() {
 
       {(lead.status === WON || lead.status === LOST) && (
         <div className="info-card closure-card">
-          <h3>{lead.status === WON ? 'Order Details (Won)' : 'Loss Details'}</h3>
+          <h3>{lead.status === WON ? 'Admission Details (Converted)' : 'Not Interested Details'}</h3>
           <form onSubmit={handleSaveClosure} className="closure-form">
             {lead.status === WON ? (
               <>
@@ -518,11 +512,11 @@ export default function LeadDetail() {
         <form className="info-card action-form" onSubmit={handleAddFollowup}>
           <h3>Add Follow-up</h3>
           <div className="field">
-            <label>Remarks</label>
+            <label>Follow-up Remarks</label>
             <textarea className="text-input" rows={3} value={followRemark} onChange={(e) => setFollowRemark(e.target.value)} placeholder="Follow-up notes…" required />
           </div>
           <div className="field">
-            <label>Next Action Type</label>
+            <label>Follow-up Mode</label>
             <div className="action-type-toggle">
               {ACTION_TYPE_OPTIONS.map((a) => (
                 <button
@@ -536,20 +530,24 @@ export default function LeadDetail() {
               ))}
             </div>
           </div>
-          {actionType !== 'call' && (
+          {actionType === 'visit' && (
             <div className="field">
-              <label>{actionType === 'meeting' ? 'Location / Meeting Link' : 'Visit Address'}</label>
+              <label>Visit Address</label>
               <input
                 className="text-input"
                 value={actionLocation}
                 onChange={(e) => setActionLocation(e.target.value)}
-                placeholder={actionType === 'meeting' ? 'Office address or video call link' : 'Site address'}
+                placeholder="Address"
               />
             </div>
           )}
           <div className="field">
-            <label>Next Follow-up Date</label>
+            <label>Next Follow-up Date &amp; Time</label>
             <input className="text-input" type="datetime-local" value={followDate} onChange={(e) => setFollowDate(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Next Action</label>
+            <input className="text-input" value={nextAction} onChange={(e) => setNextAction(e.target.value)} placeholder="e.g. Send course brochure, demo class invite" />
           </div>
           <div className="field">
             <label>Update Status (optional)</label>

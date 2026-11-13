@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { SOURCE_OPTIONS, PRIORITY_OPTIONS, LEAD_TEMPERATURE_OPTIONS, CLOSING_TAT_OPTIONS } from '../lib/constants'
+import { SOURCE_OPTIONS, LEAD_TEMPERATURE_OPTIONS, TRADING_EXPERIENCE_OPTIONS } from '../lib/constants'
 import SearchableSelect from './SearchableSelect'
 import './LeadFormModal.css'
 
@@ -42,7 +42,7 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.lead_name.trim()) {
-      setError('Customer name is required.')
+      setError('Student name is required.')
       return
     }
     if (!form.mobile.trim()) {
@@ -56,10 +56,9 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
       .from('leads')
       .update({
         lead_name: form.lead_name.trim(),
-        client_name: form.client_name.trim() || null,
         mobile: form.mobile.trim() || null,
         email: form.email.trim() || null,
-        company: form.company.trim() || null,
+        company: form.company.trim() || form.lead_name.trim(),
         industry_type: form.industry_type.trim() || null,
         city: form.city.trim() || null,
         state: form.state.trim() || null,
@@ -70,11 +69,7 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
         // was populated).
         source: form.source || 'manual_entry',
         requirement: form.requirement.trim() || null,
-        lead_temperature: form.lead_temperature || null,
-        priority: form.priority,
-        budget: form.budget ? Number(form.budget) : null,
-        expected_deal_value: form.expected_deal_value ? Number(form.expected_deal_value) : null,
-        closing_tat: form.closing_tat || null
+        lead_temperature: form.lead_temperature || null
       })
       .eq('id', lead.id)
 
@@ -97,15 +92,11 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <h3 className="form-section-title">Basic Lead Details</h3>
+          <h3 className="form-section-title">Student Details</h3>
           <div className="modal-grid">
             <div className="field">
-              <label>Customer Name *</label>
+              <label>Student Name *</label>
               <input className="text-input" value={form.lead_name} onChange={(e) => update('lead_name', e.target.value)} />
-            </div>
-            <div className="field">
-              <label>Client Name</label>
-              <input className="text-input" value={form.client_name} onChange={(e) => update('client_name', e.target.value)} placeholder="Contact / decision maker name" />
             </div>
             <div className="field">
               <label>Mobile No. *</label>
@@ -116,12 +107,13 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
               <input className="text-input" type="email" value={form.email} onChange={(e) => update('email', e.target.value)} />
             </div>
             <div className="field">
-              <label>Company</label>
-              <input className="text-input" value={form.company} onChange={(e) => update('company', e.target.value)} />
-            </div>
-            <div className="field">
-              <label>Type of Industry</label>
-              <input className="text-input" value={form.industry_type} onChange={(e) => update('industry_type', e.target.value)} placeholder="e.g. Real Estate, Retail, IT" />
+              <label>Trading Experience</label>
+              <select className="text-input" value={form.industry_type} onChange={(e) => update('industry_type', e.target.value)}>
+                <option value="">-- Select --</option>
+                {TRADING_EXPERIENCE_OPTIONS.map((x) => (
+                  <option key={x} value={x}>{x}</option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>City</label>
@@ -140,26 +132,26 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
               </select>
             </div>
             <div className="field">
-              <label>Product / Service</label>
+              <label>Interested Course</label>
               <SearchableSelect
                 options={products.map((p) => ({ value: p.id, label: p.product_name, sublabel: p.category }))}
                 value={form.product_id}
                 onChange={(v) => update('product_id', v)}
-                placeholder="Search product/service…"
+                placeholder="Search course…"
                 emptyLabel="-- None --"
               />
             </div>
 
             <div className="field wide">
-              <label>Requirement</label>
+              <label>Preferred Course / Notes</label>
               <textarea className="text-input" rows={2} value={form.requirement} onChange={(e) => update('requirement', e.target.value)} />
             </div>
           </div>
 
-          <h3 className="form-section-title">Sales Details</h3>
+          <h3 className="form-section-title">Priority</h3>
           <div className="modal-grid">
             <div className="field">
-              <label>Lead Temperature</label>
+              <label>Priority</label>
               <select className="text-input" value={form.lead_temperature} onChange={(e) => update('lead_temperature', e.target.value)}>
                 <option value="">-- Select --</option>
                 {LEAD_TEMPERATURE_OPTIONS.map((t) => (
@@ -168,34 +160,9 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
               </select>
             </div>
 
-            <div className="field">
-              <label>Priority</label>
-              <select className="text-input" value={form.priority} onChange={(e) => update('priority', e.target.value)}>
-                {PRIORITY_OPTIONS.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
 
-            <div className="field">
-              <label>Budget (₹)</label>
-              <input className="text-input" type="number" value={form.budget} onChange={(e) => update('budget', e.target.value)} />
-            </div>
 
-            <div className="field">
-              <label>Expected Deal Value (₹)</label>
-              <input className="text-input" type="number" value={form.expected_deal_value} onChange={(e) => update('expected_deal_value', e.target.value)} placeholder="Expected value if won" />
-            </div>
 
-            <div className="field">
-              <label>Closing TAT</label>
-              <select className="text-input" value={form.closing_tat} onChange={(e) => update('closing_tat', e.target.value)}>
-                <option value="">-- Select --</option>
-                {CLOSING_TAT_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {error && <div className="form-error" role="alert">{error}</div>}

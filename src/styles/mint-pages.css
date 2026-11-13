@@ -175,3 +175,16 @@ body .modal-card .modal-footer { margin-top: 22px; padding-top: 16px; border-top
   body .mobile-card-table tr { border-radius: 16px; border-color: #E2E8F0; animation: mpRow .45s ease both; }
   body .mobile-card-table tr:hover { background: #ECFDF5; box-shadow: none; }
 }
+
+/* ---------- wide logo (logo image already contains the brand name) ---------- */
+body .shell-logo, body .top-header-logo, body .brand-logo {
+  width: auto; height: 40px; max-width: 150px; object-fit: contain;
+  border-radius: 8px; box-shadow: none;
+}
+body .shell-logo { height: 32px; max-width: 130px; }
+body .brand-logo { height: 52px; max-width: 220px; background: #fff; padding: 6px 12px; border-radius: 12px; }
+body .shell-brand-name, body .pipeline-brand-name, body .top-header-title, body .top-header-tagline { display: none; }
+
+/* ---------- modal form spacing (a global .field margin from another page leaked in) ---------- */
+body .modal-card .modal-grid { gap: 14px 16px; align-items: start; }
+body .modal-card .field { margin-bottom: 0; }

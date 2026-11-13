@@ -35,7 +35,7 @@ const TABS = [
   { key: 'customer_sales', label: 'Customer Wise Sales' },
   { key: 'salesman_sales', label: 'Salesman Wise Sales' },
   { key: 'sales_funnel', label: 'Sales Funnel' },
-  { key: 'industry_sales', label: 'Industry Wise Sales' },
+  { key: 'industry_sales', label: 'Experience Wise Sales' },
   { key: 'city_sales', label: 'City Wise Sales' }
 ]
 
@@ -1206,7 +1206,7 @@ function SalesFunnelReport() {
 }
 
 // ============================================================
-// 10. Industry Wise Sales Report
+// 10. Experience Wise Sales Report
 // ============================================================
 function IndustrySalesReport() {
   const [fromDate, setFromDate] = useState(firstDayOfMonth())
@@ -1246,10 +1246,10 @@ function IndustrySalesReport() {
   function handleExport() {
     const wb = XLSX.utils.book_new()
     const sheet = XLSX.utils.aoa_to_sheet([
-      ['Industry', 'Orders', 'Sales Value', 'Contribution %'],
+      ['Trading Experience', 'Orders', 'Sales Value', 'Contribution %'],
       ...rows.map((r) => [r.name, r.count, r.sales, `${r.contribution}%`])
     ])
-    XLSX.utils.book_append_sheet(wb, sheet, 'Industry Sales')
+    XLSX.utils.book_append_sheet(wb, sheet, 'Experience Sales')
     XLSX.writeFile(wb, `industry_wise_sales_report_${fromDate}_to_${toDate}.xlsx`)
   }
 
@@ -1269,7 +1269,7 @@ function IndustrySalesReport() {
       ) : (
         <>
           <div className="panel-card rh-mb">
-            <h3>Sales by Industry</h3>
+            <h3>Sales by Trading Experience</h3>
             <ResponsiveContainer width="100%" height={Math.max(220, rows.length * 42)}>
               <BarChart data={rows} layout="vertical" margin={{ left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
@@ -1282,7 +1282,7 @@ function IndustrySalesReport() {
           </div>
 
           <div className="panel-card">
-            <h3>Industry-wise Breakdown</h3>
+            <h3>Experience-wise Breakdown</h3>
             <div className="mobile-card-table">
             <table className="reports-table">
               <thead><tr><th>Industry</th><th>Orders</th><th>Sales Value</th><th>Contribution</th></tr></thead>

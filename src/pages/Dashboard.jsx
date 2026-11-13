@@ -30,11 +30,10 @@ import './Dashboard.css'
 import './DashboardMint.css'
 
 const PIPELINE_COLUMNS = [
-  { key: 'new', label: 'New Lead', color: MINT.sky, statuses: ['new_lead'] },
+  { key: 'new', label: 'New', color: MINT.sky, statuses: ['new_lead'] },
   { key: 'contacted', label: 'Contacted', color: MINT.teal, statuses: ['contacted'] },
-  { key: 'followup', label: 'Follow Up', color: MINT.amber, statuses: ['followup_required', 'hot_lead', 'warm_lead'] },
-  { key: 'proposal', label: 'Proposal Sent', color: MINT.indigo, statuses: ['proposal_sent', 'negotiation'] },
-  { key: 'won', label: 'Won Order', color: MINT.emerald, statuses: ['won_order'] }
+  { key: 'followup', label: 'Interested', color: MINT.amber, statuses: ['followup_required', 'hot_lead', 'warm_lead', 'proposal_sent', 'negotiation'] },
+  { key: 'won', label: 'Converted', color: MINT.emerald, statuses: ['won_order'] }
 ]
 
 const OPEN = (l) => !['won_order', 'lost_order'].includes(l.status)

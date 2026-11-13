@@ -25,7 +25,7 @@ export default function TodaysTasks() {
       const overdue = data.filter(
         (l) => l.next_followup_date?.slice(0, 10) < today && !['won_order', 'lost_order'].includes(l.status)
       ).length
-      const proposals = data.filter((l) => l.status === 'proposal_sent').length
+      const proposals = data.filter((l) => l.status === 'followup_required').length
 
       setCounts({ dueToday, overdue, proposals })
     }
@@ -35,7 +35,7 @@ export default function TodaysTasks() {
   const items = [
     { label: 'Follow-ups Due Today', value: counts.dueToday, color: '#5B8DEF', to: '/leads?task=due_today' },
     { label: 'Overdue Follow-ups', value: counts.overdue, color: '#E5484D', to: '/leads?task=overdue' },
-    { label: 'Proposals to Send', value: counts.proposals, color: '#9B7FE0', to: '/leads?status=proposal_sent' }
+    { label: 'Interested Leads', value: counts.proposals, color: '#9B7FE0', to: '/leads?status=followup_required' }
   ]
 
   return (

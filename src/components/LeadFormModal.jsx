@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { STATUS_OPTIONS, SOURCE_OPTIONS, PRIORITY_OPTIONS, LEAD_TEMPERATURE_OPTIONS, CLOSING_TAT_OPTIONS } from '../lib/constants'
+import { STATUS_OPTIONS, SOURCE_OPTIONS, LEAD_TEMPERATURE_OPTIONS, ACTION_TYPE_OPTIONS, TRADING_EXPERIENCE_OPTIONS } from '../lib/constants'
 import SearchableSelect from './SearchableSelect'
 import './LeadFormModal.css'
 
@@ -27,7 +27,10 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
     assigned_to: users.length === 0 ? (currentUserId || '') : '',
     budget: '',
     expected_deal_value: '',
-    closing_tat: ''
+    closing_tat: '',
+    next_followup_date: '',
+    next_action_type: 'call',
+    next_action: ''
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -47,7 +50,7 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.lead_name.trim()) {
-      setError('Customer name is required.')
+      setError('Student name is required.')
       return
     }
     if (!form.mobile.trim()) {
@@ -77,10 +80,10 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
 
     const payload = {
       lead_name: form.lead_name.trim(),
-      client_name: form.client_name.trim() || null,
+      client_name: null,
       mobile: form.mobile.trim() || null,
       email: form.email.trim() || null,
-      company: form.company.trim() || null,
+      company: form.lead_name.trim(),
       industry_type: form.industry_type.trim() || null,
       city: form.city.trim() || null,
       state: form.state.trim() || null,
@@ -92,11 +95,10 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
       requirement: form.requirement.trim() || null,
       status: form.status,
       lead_temperature: form.lead_temperature || null,
-      priority: form.priority,
       assigned_to: form.assigned_to || null,
-      budget: form.budget ? Number(form.budget) : null,
-      expected_deal_value: form.expected_deal_value ? Number(form.expected_deal_value) : null,
-      closing_tat: form.closing_tat || null,
+      next_followup_date: form.next_followup_date ? new Date(form.next_followup_date).toISOString() : null,
+      next_action_type: form.next_action_type || 'call',
+      next_action: form.next_action.trim() || null,
       created_by: currentUserId
     }
 
@@ -121,27 +123,18 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
         </div>
 
         <form onSubmit={handleSubmit}>
-          <h3 className="form-section-title">Basic Lead Details</h3>
+          <h3 className="form-section-title">Student Details</h3>
           <div className="modal-grid">
             <div className="field">
-              <label>Customer Name *</label>
+              <label>Student Name *</label>
               <input
                 className="text-input"
                 value={form.lead_name}
                 onChange={(e) => update('lead_name', e.target.value)}
-                placeholder="Customer's name"
+                placeholder="Student's name"
               />
             </div>
 
-            <div className="field">
-              <label>Client Name</label>
-              <input
-                className="text-input"
-                value={form.client_name}
-                onChange={(e) => update('client_name', e.target.value)}
-                placeholder="Contact / decision maker name"
-              />
-            </div>
 
             <div className="field">
               <label>Mobile No. *</label>
@@ -164,24 +157,15 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
               />
             </div>
 
-            <div className="field">
-              <label>Company</label>
-              <input
-                className="text-input"
-                value={form.company}
-                onChange={(e) => update('company', e.target.value)}
-                placeholder="Company name"
-              />
-            </div>
 
             <div className="field">
-              <label>Type of Industry</label>
-              <input
-                className="text-input"
-                value={form.industry_type}
-                onChange={(e) => update('industry_type', e.target.value)}
-                placeholder="e.g. Real Estate, Retail, IT"
-              />
+              <label>Trading Experience</label>
+              <select className="text-input" value={form.industry_type} onChange={(e) => update('industry_type', e.target.value)}>
+                <option value="">-- Select --</option>
+                {TRADING_EXPERIENCE_OPTIONS.map((x) => (
+                  <option key={x} value={x}>{x}</option>
+                ))}
+              </select>
             </div>
 
             <div className="field">
@@ -214,29 +198,29 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
             </div>
 
             <div className="field">
-              <label>Product / Service</label>
+              <label>Interested Course</label>
               <SearchableSelect
                 options={products.map((p) => ({ value: p.id, label: p.product_name, sublabel: p.category }))}
                 value={form.product_id}
                 onChange={(v) => update('product_id', v)}
-                placeholder="Search product/service…"
+                placeholder="Search course…"
                 emptyLabel="-- None --"
               />
             </div>
 
             <div className="field wide">
-              <label>Requirement</label>
+              <label>Preferred Course / Notes</label>
               <textarea
                 className="text-input"
                 rows={2}
                 value={form.requirement}
                 onChange={(e) => update('requirement', e.target.value)}
-                placeholder="What does the customer need?"
+                placeholder="Which course / batch does the student prefer?"
               />
             </div>
           </div>
 
-          <h3 className="form-section-title">Sales Details</h3>
+          <h3 className="form-section-title">Status &amp; Counsellor</h3>
           <div className="modal-grid">
             <div className="field">
               <label>Status</label>
@@ -248,7 +232,7 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
             </div>
 
             <div className="field">
-              <label>Lead Temperature</label>
+              <label>Priority</label>
               <select className="text-input" value={form.lead_temperature} onChange={(e) => update('lead_temperature', e.target.value)}>
                 <option value="">-- Select --</option>
                 {LEAD_TEMPERATURE_OPTIONS.map((t) => (
@@ -257,17 +241,9 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
               </select>
             </div>
 
-            <div className="field">
-              <label>Priority</label>
-              <select className="text-input" value={form.priority} onChange={(e) => update('priority', e.target.value)}>
-                {PRIORITY_OPTIONS.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
 
             <div className="field">
-              <label>Assign To (BDE/Sales)</label>
+              <label>Assigned Counsellor</label>
               {users.length > 0 ? (
                 <select className="text-input" value={form.assigned_to} onChange={(e) => update('assigned_to', e.target.value)}>
                   <option value="">-- Unassigned --</option>
@@ -280,36 +256,27 @@ export default function LeadFormModal({ users, currentUserId, onClose, onSaved }
               )}
             </div>
 
-            <div className="field">
-              <label>Budget (₹)</label>
-              <input
-                className="text-input"
-                type="number"
-                value={form.budget}
-                onChange={(e) => update('budget', e.target.value)}
-                placeholder="Customer's budget"
-              />
-            </div>
 
-            <div className="field">
-              <label>Expected Deal Value (₹)</label>
-              <input
-                className="text-input"
-                type="number"
-                value={form.expected_deal_value}
-                onChange={(e) => update('expected_deal_value', e.target.value)}
-                placeholder="Expected value if won"
-              />
-            </div>
 
+          </div>
+
+          <h3 className="form-section-title">Follow-up</h3>
+          <div className="modal-grid">
             <div className="field">
-              <label>Closing TAT</label>
-              <select className="text-input" value={form.closing_tat} onChange={(e) => update('closing_tat', e.target.value)}>
-                <option value="">-- Select --</option>
-                {CLOSING_TAT_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+              <label>Next Follow-up Date &amp; Time</label>
+              <input className="text-input" type="datetime-local" value={form.next_followup_date} onChange={(e) => update('next_followup_date', e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Follow-up Mode</label>
+              <select className="text-input" value={form.next_action_type} onChange={(e) => update('next_action_type', e.target.value)}>
+                {ACTION_TYPE_OPTIONS.map((a) => (
+                  <option key={a.value} value={a.value}>{a.icon} {a.label}</option>
                 ))}
               </select>
+            </div>
+            <div className="field wide">
+              <label>Next Action</label>
+              <input className="text-input" value={form.next_action} onChange={(e) => update('next_action', e.target.value)} placeholder="e.g. Send course brochure, demo class invite" />
             </div>
           </div>
 
