@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { SOURCE_OPTIONS, LEAD_TEMPERATURE_OPTIONS, TRADING_EXPERIENCE_OPTIONS } from '../lib/constants'
 import SearchableSelect from './SearchableSelect'
+import { INDIA_STATES, citiesOfState } from '../lib/indiaLocations'
 import './LeadFormModal.css'
 
 export default function EditLeadModal({ lead, onClose, onSaved }) {
@@ -116,13 +117,30 @@ export default function EditLeadModal({ lead, onClose, onSaved }) {
               </select>
             </div>
             <div className="field">
-              <label>City</label>
-              <input className="text-input" value={form.city} onChange={(e) => update('city', e.target.value)} />
-            </div>
-            <div className="field">
               <label>State</label>
-              <input className="text-input" value={form.state} onChange={(e) => update('state', e.target.value)} />
+              <SearchableSelect
+                options={INDIA_STATES.map((n) => ({ value: n, label: n }))}
+                value={form.state}
+                allowCustom
+                onChange={(v) => setForm((f) => ({ ...f, state: v, city: '' }))}
+                placeholder="Search state…"
+                emptyLabel="-- Clear state --"
+              />
             </div>
+
+            <div className="field">
+              <label>City</label>
+              <SearchableSelect
+                key={form.state}
+                options={citiesOfState(form.state).map((n) => ({ value: n, label: n }))}
+                value={form.city}
+                onChange={(v) => update('city', v)}
+                placeholder={form.state ? 'Search or type city…' : 'Type city (or pick a state first)'}
+                emptyLabel="-- Clear city --"
+                allowCustom
+              />
+            </div>
+
             <div className="field">
               <label>Source</label>
               <select className="text-input" value={form.source} onChange={(e) => update('source', e.target.value)}>

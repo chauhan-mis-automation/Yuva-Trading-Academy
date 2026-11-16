@@ -40,7 +40,7 @@ export default function LeadsList() {
     setLoading(true)
     let query = supabase
       .from('leads')
-      .select('*, assigned_profile:profiles!leads_assigned_to_fkey(full_name)')
+      .select('*, assigned_profile:profiles!leads_assigned_to_fkey(full_name), product:products(product_name)')
       .order('created_at', { ascending: false })
 
     if (!isManager && session?.user?.id) {
@@ -100,7 +100,8 @@ export default function LeadsList() {
       return (
         l.lead_name?.toLowerCase().includes(q) ||
         l.mobile?.toLowerCase().includes(q) ||
-        l.company?.toLowerCase().includes(q)
+        l.company?.toLowerCase().includes(q) ||
+        l.product?.product_name?.toLowerCase().includes(q)
       )
     })
     .filter((l) => {
@@ -191,6 +192,7 @@ export default function LeadsList() {
               <tr>
                 <th>Student</th>
                 <th>Contact</th>
+                <th>Interested Course</th>
                 <th>Source</th>
                 <th>Priority</th>
                 <th>Status</th>
@@ -217,6 +219,9 @@ export default function LeadsList() {
                         ) : '—'}
                       </div>
                       {lead.email && <div className="lead-email-cell">{lead.email}</div>}
+                    </td>
+                    <td data-label="Interested Course">
+                      {lead.product?.product_name ? <span className="course-chip">{lead.product.product_name}</span> : '—'}
                     </td>
                     <td data-label="Source">{sourceLabel(lead.source)}</td>
                     <td data-label="Priority">

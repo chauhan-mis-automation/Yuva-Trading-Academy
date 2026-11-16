@@ -3,42 +3,43 @@ import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../AuthContext'
 import { supabase } from '../supabaseClient'
-import { STATUS_OPTIONS, SOURCE_OPTIONS, PRIORITY_OPTIONS, LEAD_TEMPERATURE_OPTIONS, CLOSING_TAT_OPTIONS } from '../lib/constants'
+import { STATUS_OPTIONS, SOURCE_OPTIONS, LEAD_TEMPERATURE_OPTIONS, ACTION_TYPE_OPTIONS, TRADING_EXPERIENCE_OPTIONS, statusMeta } from '../lib/constants'
+import { INDIA_STATES } from '../lib/indiaLocations'
 import './BulkUpload.css'
 
 const HEADER_ALIASES = {
-  'lead name': 'lead_name', 'name': 'lead_name', 'leadname': 'lead_name', 'customer name': 'lead_name',
-  'client name': 'client_name', 'client': 'client_name',
+  'student name': 'lead_name', 'lead name': 'lead_name', 'name': 'lead_name', 'leadname': 'lead_name', 'customer name': 'lead_name',
   'mobile': 'mobile', 'phone': 'mobile', 'mobile number': 'mobile', 'mobile no': 'mobile', 'mobile no.': 'mobile', 'contact': 'mobile', 'whatsapp': 'mobile',
   'email': 'email', 'email address': 'email',
-  'company': 'company', 'company name': 'company',
-  'type of industry': 'industry_type', 'industry': 'industry_type', 'industry type': 'industry_type',
+  'trading experience': 'industry_type', 'experience': 'industry_type',
   'city': 'city',
   'state': 'state',
   'source': 'source', 'lead source': 'source',
   'status': 'status', 'lead status': 'status',
-  'lead temperature': 'lead_temperature', 'temperature': 'lead_temperature',
-  'priority': 'priority', 'lead priority': 'priority',
-  'budget': 'budget',
-  'expected deal value': 'expected_deal_value', 'deal value': 'expected_deal_value',
-  'closing tat': 'closing_tat', 'tat': 'closing_tat',
-  'requirement': 'requirement', 'need': 'requirement', 'notes': 'requirement',
-  'product': 'product', 'product/service': 'product', 'product name': 'product', 'service': 'product',
-  'assigned to': 'assigned_to', 'assigned user': 'assigned_to', 'assignee': 'assigned_to',
-  'next follow-up': 'next_followup_date', 'next followup date': 'next_followup_date',
-  'follow up date': 'next_followup_date', 'next follow up': 'next_followup_date', 'follow-up date & time': 'next_followup_date'
+  'priority': 'lead_temperature', 'lead priority': 'lead_temperature', 'lead temperature': 'lead_temperature', 'temperature': 'lead_temperature',
+  'preferred course / notes': 'requirement', 'preferred course': 'requirement', 'requirement': 'requirement', 'notes': 'requirement',
+  'interested course': 'product', 'course': 'product', 'product': 'product', 'product/service': 'product', 'product name': 'product', 'service': 'product',
+  'assigned counsellor': 'assigned_to', 'counsellor': 'assigned_to', 'assigned to': 'assigned_to', 'assigned user': 'assigned_to', 'assignee': 'assigned_to',
+  'next follow-up': 'next_followup_date', 'next followup date': 'next_followup_date', 'next follow-up date': 'next_followup_date',
+  'follow up date': 'next_followup_date', 'next follow up': 'next_followup_date', 'follow-up date & time': 'next_followup_date', 'next follow-up date & time': 'next_followup_date',
+  'follow-up mode': 'next_action_type', 'followup mode': 'next_action_type', 'mode': 'next_action_type',
+  'next action': 'next_action'
 }
 
 const VALID_STATUS_VALUES = STATUS_OPTIONS.map((s) => s.value)
 const STATUS_LABEL_TO_VALUE = Object.fromEntries(STATUS_OPTIONS.map((s) => [s.label.toLowerCase(), s.value]))
 const VALID_SOURCE_VALUES = SOURCE_OPTIONS.map((s) => s.value)
 const SOURCE_LABEL_TO_VALUE = Object.fromEntries(SOURCE_OPTIONS.map((s) => [s.label.toLowerCase(), s.value]))
-const VALID_PRIORITY_VALUES = PRIORITY_OPTIONS.map((p) => p.value)
-const PRIORITY_LABEL_TO_VALUE = Object.fromEntries(PRIORITY_OPTIONS.map((p) => [p.label.toLowerCase(), p.value]))
 const VALID_TEMP_VALUES = LEAD_TEMPERATURE_OPTIONS.map((t) => t.value)
 const TEMP_LABEL_TO_VALUE = Object.fromEntries(LEAD_TEMPERATURE_OPTIONS.map((t) => [t.label.toLowerCase(), t.value]))
-const VALID_TAT_VALUES = CLOSING_TAT_OPTIONS.map((t) => t.value)
-const TAT_LABEL_TO_VALUE = Object.fromEntries(CLOSING_TAT_OPTIONS.map((t) => [t.label.toLowerCase().replace(/\s+/g, ''), t.value]))
+const VALID_MODE_VALUES = ACTION_TYPE_OPTIONS.map((a) => a.value)
+const MODE_LABEL_TO_VALUE = Object.fromEntries(ACTION_TYPE_OPTIONS.map((a) => [a.label.toLowerCase(), a.value]))
+// Older status words still work in an Excel file.
+const OLD_STATUS_TO_VALUE = {
+  hot_lead: 'followup_required', warm_lead: 'followup_required', follow_up_required: 'followup_required',
+  proposal_sent: 'followup_required', negotiation: 'followup_required', not_interested: 'lost_order',
+  won: 'won_order', lost: 'lost_order'
+}
 
 function normalizeRow(rawRow) {
   const row = {}
@@ -60,8 +61,10 @@ function normalizeName(s) {
 function resolveStatus(value) {
   if (!value) return 'new_lead'
   const v = value.toLowerCase()
-  if (VALID_STATUS_VALUES.includes(v.replace(/\s+/g, '_'))) return v.replace(/\s+/g, '_')
+  const underscored = v.replace(/\s+/g, '_')
   if (STATUS_LABEL_TO_VALUE[v]) return STATUS_LABEL_TO_VALUE[v]
+  if (VALID_STATUS_VALUES.includes(underscored)) return underscored
+  if (OLD_STATUS_TO_VALUE[underscored]) return OLD_STATUS_TO_VALUE[underscored]
   return 'new_lead'
 }
 
@@ -73,14 +76,6 @@ function resolveSource(value) {
   return 'other'
 }
 
-function resolvePriority(value) {
-  if (!value) return 'medium'
-  const v = value.toLowerCase()
-  if (VALID_PRIORITY_VALUES.includes(v)) return v
-  if (PRIORITY_LABEL_TO_VALUE[v]) return PRIORITY_LABEL_TO_VALUE[v]
-  return 'medium'
-}
-
 function resolveTemperature(value) {
   if (!value) return null
   const v = value.toLowerCase().trim()
@@ -89,13 +84,31 @@ function resolveTemperature(value) {
   return null
 }
 
-function resolveClosingTat(value) {
-  if (!value) return null
+function actionLabel(v) {
+  return (ACTION_TYPE_OPTIONS.find((a) => a.value === v) || { label: v }).label
+}
+
+function resolveMode(value) {
+  if (!value) return 'call'
   const v = value.toLowerCase().trim()
-  if (VALID_TAT_VALUES.includes(v)) return v
-  const compact = v.replace(/\s+/g, '')
-  if (TAT_LABEL_TO_VALUE[compact]) return TAT_LABEL_TO_VALUE[compact]
-  return null
+  if (VALID_MODE_VALUES.includes(v)) return v
+  if (MODE_LABEL_TO_VALUE[v]) return MODE_LABEL_TO_VALUE[v]
+  if (v === 'whats app' || v === 'wa') return 'whatsapp'
+  return 'call'
+}
+
+function resolveExperience(value) {
+  if (!value) return ''
+  const hit = TRADING_EXPERIENCE_OPTIONS.find((x) => x.toLowerCase() === value.toLowerCase().trim())
+  return hit || value
+}
+
+function resolveState(value) {
+  if (!value) return ''
+  const v = value.toLowerCase().trim()
+  const alias = { orissa: 'Odisha', pondicherry: 'Puducherry', uttaranchal: 'Uttarakhand', 'new delhi': 'Delhi', 'nct of delhi': 'Delhi', 'j&k': 'Jammu and Kashmir', 'jammu & kashmir': 'Jammu and Kashmir', 'andaman & nicobar islands': 'Andaman and Nicobar Islands' }
+  const hit = INDIA_STATES.find((x) => x.toLowerCase() === v) || alias[v]
+  return hit || value
 }
 
 // Excel stores dates as a serial day-count from 1899-12-30. When a cell isn't
@@ -230,20 +243,14 @@ export default function BulkUpload() {
           return {
             _row: i + 2,
             lead_name: norm.lead_name || '',
-            client_name: norm.client_name || '',
             mobile: norm.mobile || '',
             email: norm.email || '',
-            company: norm.company || '',
-            industry_type: norm.industry_type || '',
+            industry_type: resolveExperience(norm.industry_type),
+            state: resolveState(norm.state),
             city: norm.city || '',
-            state: norm.state || '',
             source: resolveSource(norm.source),
             status: resolveStatus(norm.status),
             lead_temperature: resolveTemperature(norm.lead_temperature),
-            priority: resolvePriority(norm.priority),
-            budget: norm.budget ? Number(norm.budget.replace(/[^0-9.]/g, '')) || null : null,
-            expected_deal_value: norm.expected_deal_value ? Number(norm.expected_deal_value.replace(/[^0-9.]/g, '')) || null : null,
-            closing_tat: resolveClosingTat(norm.closing_tat),
             requirement: norm.requirement || '',
             product_name,
             assigned_name,
@@ -251,6 +258,8 @@ export default function BulkUpload() {
             assigned_unmatched,
             next_followup_date,
             followup_invalid,
+            next_action_type: resolveMode(norm.next_action_type),
+            next_action: norm.next_action || '',
             valid: issues.length === 0,
             issues
           }
@@ -277,24 +286,22 @@ export default function BulkUpload() {
     setUploading(true)
     const payload = validRows.map((r) => ({
       lead_name: r.lead_name,
-      client_name: r.client_name || null,
+      client_name: null,
       mobile: r.mobile || null,
       email: r.email || null,
-      company: r.company || null,
+      company: r.lead_name,
       industry_type: r.industry_type || null,
-      city: r.city || null,
       state: r.state || null,
+      city: r.city || null,
       source: r.source,
       status: r.status,
       lead_temperature: r.lead_temperature,
-      priority: r.priority,
-      budget: r.budget,
-      expected_deal_value: r.expected_deal_value,
-      closing_tat: r.closing_tat,
       requirement: r.requirement || null,
       product_id: resolveProductId(r.product_name),
       assigned_to: resolveAssignedTo(r.assigned_name),
       next_followup_date: r.next_followup_date,
+      next_action_type: r.next_action_type,
+      next_action: r.next_action || null,
       created_by: session?.user?.id
     }))
 
@@ -314,8 +321,8 @@ export default function BulkUpload() {
   function downloadTemplate() {
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Customer Name', 'Client Name', 'Mobile No.', 'Email', 'Company', 'Type of Industry', 'City', 'State', 'Source', 'Status', 'Lead Temperature', 'Priority', 'Budget', 'Expected Deal Value', 'Closing TAT', 'Requirement', 'Product', 'Assigned To', 'Next Follow-up Date'],
-      ['Rahul Sharma', 'Rahul Sharma', '9876543210', 'rahul@example.com', 'ABC Traders', 'Retail', 'Mumbai', 'Maharashtra', 'Website Form', 'New Lead', 'Hot', 'High', '30000', '35000', '15 Days', 'Needs a new website', 'Website Development', 'Priya Singh', '2026-09-20']
+      ['Student Name', 'Mobile No.', 'Email', 'Trading Experience', 'State', 'City', 'Lead Source', 'Status', 'Priority', 'Interested Course', 'Preferred Course / Notes', 'Assigned Counsellor', 'Next Follow-up Date & Time', 'Follow-up Mode', 'Next Action'],
+      ['Rahul Sharma', '9876543210', 'rahul@example.com', 'Beginner', 'Maharashtra', 'Pune', 'Meta / Facebook', 'New', 'Hot', 'Options Trading Mastery', 'Evening batch preferred', 'Priya Singh', '25/11/2026 14:30', 'WhatsApp', 'Send course brochure']
     ])
     XLSX.utils.book_append_sheet(wb, ws, 'Leads')
     XLSX.writeFile(wb, 'lead_upload_template.xlsx')
@@ -351,9 +358,9 @@ export default function BulkUpload() {
           <div className="info-card">
             <h3>1. Choose File</h3>
             <p className="bulk-hint">
-              Expected columns: <strong>Customer Name</strong> (required), Client Name, <strong>Mobile No.</strong> (required), Email, Company, Type of Industry, City, State, Source, Status, Lead Temperature (Hot/Warm/Cold), Priority, Budget, Expected Deal Value, Closing TAT (7/15/30/60 Days), Requirement, Product, Assigned To, Next Follow-up Date.
-              Column names are matched flexibly — "Name", "Phone", "Service" etc. also work. Product and Assigned To must match an existing Product/User name exactly (spelling can differ in case) — the preview below will flag any that don't match.
-              Next Follow-up Date accepts a real Excel date cell, or text like <strong>25/09/2026</strong> or <strong>2026-09-25 14:30</strong>.
+              Expected columns: <strong>Student Name</strong> (required), <strong>Mobile No.</strong> (required), Email, Trading Experience (Beginner / Intermediate / Advanced), State, City, Lead Source, Status (New / Contacted / Interested / Not Interested / Converted), Priority (Hot / Warm / Cold), Interested Course, Preferred Course / Notes, Assigned Counsellor, Next Follow-up Date &amp; Time, Follow-up Mode (Call / WhatsApp / Visit), Next Action.
+              Column names are matched flexibly — "Name", "Phone", "Course" etc. also work. Interested Course and Assigned Counsellor must match an existing Product / User name exactly (spelling can differ in case) — the preview below will flag any that don't match.
+              Next Follow-up Date accepts a real Excel date cell, or text like <strong>25/09/2026</strong> or <strong>25/09/2026 14:30</strong>.
             </p>
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="file-input" />
             {fileName && <p className="bulk-filename">Selected: {fileName}</p>}
@@ -375,23 +382,18 @@ export default function BulkUpload() {
                   <thead>
                     <tr>
                       <th>Row</th>
-                      <th>Customer Name</th>
-                      <th>Client Name</th>
+                      <th>Student Name</th>
                       <th>Mobile No.</th>
-                      <th>Company</th>
-                      <th>Industry</th>
-                      <th>City</th>
+                      <th>Experience</th>
                       <th>State</th>
+                      <th>City</th>
                       <th>Source</th>
                       <th>Status</th>
-                      <th>Temperature</th>
                       <th>Priority</th>
-                      <th>Budget</th>
-                      <th>Deal Value</th>
-                      <th>Closing TAT</th>
-                      <th>Product</th>
-                      <th>Assigned To</th>
+                      <th>Interested Course</th>
+                      <th>Counsellor</th>
                       <th>Next Follow-up</th>
+                      <th>Mode</th>
                       <th>Result</th>
                     </tr>
                   </thead>
@@ -400,22 +402,16 @@ export default function BulkUpload() {
                       <tr key={r._row} className={r.valid ? '' : 'row-invalid'}>
                         <td>{r._row}</td>
                         <td>{r.lead_name || '—'}</td>
-                        <td>{r.client_name || '—'}</td>
                         <td>{r.mobile || '—'}</td>
-                        <td>{r.company || '—'}</td>
                         <td>{r.industry_type || '—'}</td>
-                        <td>{r.city || '—'}</td>
                         <td>{r.state || '—'}</td>
+                        <td>{r.city || '—'}</td>
                         <td>{r.source}</td>
-                        <td>{r.status}</td>
-                        <td>{r.lead_temperature || '—'}</td>
-                        <td>{r.priority}</td>
-                        <td>{r.budget ? `₹${r.budget.toLocaleString('en-IN')}` : '—'}</td>
-                        <td>{r.expected_deal_value ? `₹${r.expected_deal_value.toLocaleString('en-IN')}` : '—'}</td>
-                        <td>{r.closing_tat || '—'}</td>
+                        <td>{statusMeta(r.status).label}</td>
+                        <td>{r.lead_temperature ? r.lead_temperature.charAt(0).toUpperCase() + r.lead_temperature.slice(1) : '—'}</td>
                         <td>
                           {r.product_name || '—'}
-                          {r.product_unmatched && <div className="tag-warn">Not found in Products — will save without product</div>}
+                          {r.product_unmatched && <div className="tag-warn">Not found in Products — will save without course</div>}
                         </td>
                         <td>
                           {r.assigned_name || '—'}
@@ -427,6 +423,7 @@ export default function BulkUpload() {
                             : '—'}
                           {r.followup_invalid && <div className="tag-warn">Could not read this date — check format</div>}
                         </td>
+                        <td>{r.next_followup_date || r.next_action ? (actionLabel(r.next_action_type)) : '—'}</td>
                         <td>{r.valid ? <span className="tag-ok">Valid</span> : <span className="tag-bad">{r.issues.join(', ')}</span>}</td>
                       </tr>
                     ))}
